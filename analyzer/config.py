@@ -12,4 +12,5 @@ MONGODB_DB_NAME = os.getenv('MONGODB_DB_NAME')
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS')
 KAFKA_CONSUMER_GROUP = 'data_from_reddit'
 KAFKA_RAW_DATA_TOPIC = 'raw_data_from_reddit' 
-KAFKA_OUTPUT_TOPIC = 'analyzed_data'
+KAFKA_OUTPUT_TOPIC_POST = 'analyzed_posts'
+KAFKA_OUTPUT_TOPIC_COMMENTS = 'analyzed_comments'

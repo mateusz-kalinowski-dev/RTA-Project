@@ -17,9 +17,10 @@ def create_kafka_producer():
             return producer
         except Exception as e:
             print(f"Failed to connect to Kafka producer (attempt {i+1}/10): {e}")
-            if i < 9:  
+            if i < 9:  # Don't sleep on the last attempt
                 time.sleep(5)
     
+    # If we get here, we failed to connect after all retries
     raise Exception("Failed to connect to Kafka producer after multiple retries")
 
 # Track last processed time for each subreddit
@@ -61,7 +62,7 @@ def process_comment(comment, post_id=None, post_title=None):
     return {
         "id": f"reddit_comment_{comment.id}",
         "type": "reddit_comment",
-        "post_id": post_id,
+        "post_id": f"reddit_post_{post_id}",
         "post_title": post_title,
         "subreddit": comment.subreddit.display_name,
         "text": comment.body,

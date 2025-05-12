@@ -5,6 +5,11 @@ from datetime import datetime, timezone
 from kafka import KafkaConsumer, KafkaProducer
 import config
 from transformers import pipeline
+from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+
+model_name = "distilbert-base-uncased-finetuned-sst-2-english"
+tokenizer = DistilBertTokenizer.from_pretrained(model_name)
+model = DistilBertForSequenceClassification.from_pretrained(model_name)
 
 def create_kafka_consumer():
     """Create a Kafka consumer with retry logic"""
@@ -46,14 +51,13 @@ def create_kafka_producer():
     raise Exception("Failed to connect to Kafka producer after multiple retries")
 
 # Initialize sentiment analysis model with retry logic
-def init_sentiment_analyzer(max_retries=3):
+def init_sentiment_analyzer(model, tokenizer, max_retries=3):
     retries = 0
     while retries < max_retries:
         try:
             print("Loading sentiment analysis model...")
             # Use a smaller model for faster processing
-            model_name = "distilbert-base-uncased-finetuned-sst-2-english"
-            sentiment_analyzer = pipeline("sentiment-analysis", model=model_name)
+            sentiment_analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
             print("Model loaded successfully!")
             return sentiment_analyzer
         except Exception as e:
@@ -105,20 +109,18 @@ def process_messages(consumer, producer, sentiment_analyzer):
             if 'timestamp' not in data:
                 data['timestamp'] = datetime.now(timezone.utc).isoformat()
             
-            print(f"Received message: {data.get('raw_data', {}).get('id', 'unknown')}")
+            print(f"Received message: {data.get('id', 'unknown')}")
             
             # Extract text for sentiment analysis
-            text = data.get('text', '')
-            
-            # If no text field available, try to extract from other fields
-            if not text and 'title' in data:
-                text = data['title']
-            elif not text and 'body' in data:
-                text = data['body']
+            type = data.get('type')
+            if type == "reddit_post":
+                text = data.get('title', 'unknown') + ' ' + data.get('text', 'unknown')
+            else:
+                text = data.get('text', 'unknown')
             
             # Skip if no text is found
             if not text:
-                print(f"No text content found in message: {data.get('raw_data', {}).get('id', 'unknown')}")
+                print(f"No text content found in message: {data.get('id','unknown')}")
                 continue
             
             # Perform sentiment analysis
@@ -126,16 +128,19 @@ def process_messages(consumer, producer, sentiment_analyzer):
             
             # Prepare analysis result
             analysis_result = {
-                'original_id': data.get('raw_data', {}).get('id', 'unknown'),
                 'timestamp': datetime.now(timezone.utc).isoformat(),
                 'raw_data': data,
                 'sentiment': sentiment_result,
                 'analysis_type': 'sentiment'
             }
             
+            if type == 'reddit_post':
             # Send to Kafka output topic
-            producer.send(config.KAFKA_OUTPUT_TOPIC, analysis_result)
-            print(f"Sent analyzed result to Kafka topic: {config.KAFKA_OUTPUT_TOPIC}")
+                producer.send(config.KAFKA_OUTPUT_TOPIC_POST, analysis_result)
+                print(f"Sent analyzed result to Kafka topic: {config.KAFKA_OUTPUT_TOPIC_POST}")
+            else:
+                producer.send(config.KAFKA_OUTPUT_TOPIC_COMMENTS, analysis_result)
+                print(f"Sent analyzed result to Kafka topic: {config.KAFKA_OUTPUT_TOPIC_COMMENTS}")
             
         except Exception as e:
             print(f"Error processing message: {e}")
@@ -151,7 +156,7 @@ if __name__ == '__main__':
         producer = create_kafka_producer()
 
         # Initialize sentiment analyzer
-        sentiment_analyzer = init_sentiment_analyzer()
+        sentiment_analyzer = init_sentiment_analyzer(model, tokenizer)
         if sentiment_analyzer is None:
             print("Could not initialize sentiment analyzer. Exiting.")
             sys.exit(1)
