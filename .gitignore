@@ -2,3 +2,6 @@
 _pycache_
 __pycache__
 .git
+logs
+*.log
+plugins
