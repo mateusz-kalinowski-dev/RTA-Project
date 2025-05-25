@@ -64,7 +64,7 @@ services:
   postgres:
     image: postgres:latest
     container_name: postgres
-    env_file: ./airflow/airflow.env
+    env_file: .env
     volumes:
       - postgres_db:/var/lib/postgresql/data
     healthcheck:
