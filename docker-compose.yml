@@ -1,6 +1,7 @@
 
 name: rta-project
 services:
+  # Kafka and Zookeeper setup with Redpanda Console
   kafka:
     container_name: kafka
     image: confluentinc/cp-kafka:latest-ubi8
@@ -15,7 +16,11 @@ services:
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
     depends_on:
       - zookeeper
+    volumes:
+      - kafka-data:/var/lib/kafka/data
     restart: on-failure
+    networks:
+      - rta-network
 
   zookeeper:
     container_name: zookeeper
@@ -24,7 +29,12 @@ services:
       - "2181:2181"
     environment:
       - ZOOKEEPER_CLIENT_PORT=2181
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-log:/var/lib/zookeeper/log
     restart: on-failure
+    networks:
+      - rta-network
   
   redpanda-console:
     image: docker.redpanda.com/redpandadata/console:latest
@@ -36,7 +46,10 @@ services:
     depends_on:
       - kafka
     restart: on-failure
+    networks:
+      - rta-network
 
+  # Databases
   mongodb:
     container_name: mongodb
     image: mongo:latest
@@ -45,7 +58,24 @@ services:
     volumes:
       - mongodb_data:/data/db
     restart: on-failure
+    networks:
+      - rta-network
 
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    env_file: ./airflow/airflow.env
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    restart: always
+    networks:
+      - rta-network
+
+  # Application services
   broker:
     build:
       context: ./broker
@@ -57,7 +87,9 @@ services:
     env_file: .env
     volumes:
       - ./consumer:/app
-    restart: on-failure
+    restart: "no"
+    networks:
+      - rta-network
 
   analyzer:
     image: analyzer:latest
@@ -67,8 +99,9 @@ services:
     depends_on:
       - broker
     env_file: .env
-
     restart: on-failure
+    networks:
+      - rta-network
 
   consumer:
     build:
@@ -81,7 +114,78 @@ services:
     volumes:
       - ./consumer:/app
     restart: on-failure
+    networks:
+      - rta-network
+
+  # Airflow
+  airflow-webserver:
+    image: apache/airflow:3.0.1-python3.12
+    container_name: airflow-webserver
+    restart: always
+    depends_on:
+      - postgres
+    env_file: .env
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    user: "${AIRFLOW_UID:-50000}:0"
+    command: api-server
+    networks:
+      - rta-network
   
+  airflow-scheduler:
+    image: apache/airflow:3.0.1-python3.12
+    container_name: airflow-scheduler
+    restart: on-failure
+    depends_on:
+      - airflow-webserver
+      - postgres
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/requirements.txt:/opt/airflow/scripts/requirements.txt
+      - ./airflow/init.sh:/opt/airflow/init.sh
+      - airflow_python_files:/home/airflow/.local
+    env_file: .env
+    user: "${AIRFLOW_UID:-50000}:0"
+    entrypoint: /opt/airflow/init.sh
+    command: scheduler
+    networks:
+      - rta-network
+    
+  airflow-triggerer:
+    image: apache/airflow:3.0.1-python3.12
+    container_name: airflow-triggerer
+    restart: always
+    depends_on:
+      - airflow-scheduler
+    env_file: .env
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    user: "${AIRFLOW_UID:-50000}:0"
+    command: triggerer
+    networks:
+      - rta-network
+
+  airflow-dag-processor:
+    image: apache/airflow:3.0.1-python3.12
+    container_name: airflow-dag-processor
+    restart: always
+    depends_on:
+      - airflow-scheduler
+    env_file: .env
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    user: "${AIRFLOW_UID:-50000}:0"
+    command: dag-processor
+    networks:
+      - rta-network
+
+  # Backedend 
   api:
     container_name: api
     image: api:latest
@@ -93,6 +197,18 @@ services:
       - consumer
     env_file: .env
     restart: on-failure
+    networks:
+      - rta-network
+  
+  # Frontend
 
 volumes:
-  mongodb_data: 
+  mongodb_data:
+  postgres_db:
+  kafka-data:
+  zookeeper-data:
+  zookeeper-log:
+  airflow_python_files:
+
+networks:
+  rta-network:
