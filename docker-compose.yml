@@ -201,6 +201,18 @@ services:
       - rta-network
   
   # Frontend
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: on-failure
+    networks:
+      - rta-network
+
 
 volumes:
   mongodb_data:

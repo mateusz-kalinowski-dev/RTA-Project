@@ -8,10 +8,10 @@ def connect_to_mongodb():
 
 def get_posts_collection():
     db = connect_to_mongodb()
-    posts = db['reddit_posts']
+    posts = db['analyzed_posts']
     return posts
 
 def get_comments_collection():
     db = connect_to_mongodb()
-    comments = db['reddit_comments']
+    comments = db['analyzed_comments']
     return comments
