@@ -63,6 +63,8 @@ def get_posts():
     to_str = request.args.get('to')
     sentiment_filter = request.args.get('sentiment')
     subreddit = request.args.get('subreddit')
+    skip = int(request.args.get('skip', 0))
+    limit = int(request.args.get('limit', 15))
 
     from_time = parse_time_param(from_str, default=datetime.utcnow() - timedelta(days=1))
     to_time = parse_time_param(to_str, default=datetime.utcnow())
@@ -76,18 +78,48 @@ def get_posts():
         query["raw_data.subreddit"] = subreddit
 
     reddit_posts = db.get_posts_collection()
-    posts = list(reddit_posts.find(query))
-    posts.sort(key=lambda x: x["raw_data"].get("score", 0), reverse=True)
+    reddit_comments = db.get_comments_collection()
+
+    cursor = reddit_posts.find(query).sort("raw_data.score", -1)
+
+    seen_ids = set()
+    unique_posts = []
+    for post in cursor:
+        post_id = post.get("raw_data", {}).get("id")
+        if post_id and post_id not in seen_ids:
+            seen_ids.add(post_id)
+
+            comments = list(reddit_comments.find({"raw_data.post_id": post_id}))
+            comments.sort(key=lambda x: x["raw_data"].get("score", 0), reverse=True)
+            top_comments = [
+                {
+                    "text": c["raw_data"].get("text"),
+                    "score": c["raw_data"].get("score"),
+                    "sentiment": c.get("sentiment", {}).get("label")
+                }
+                for c in comments[:5]
+            ]
+
+            post["top_comments"] = top_comments
+            unique_posts.append(post)
+
+        if len(unique_posts) >= skip + limit:
+            break
+
+    paginated = unique_posts[skip:skip + limit]
 
     return jsonify([{
-        "id": post["raw_data"]["id"],
+        "id": post["raw_data"].get("id"),
         "title": post["raw_data"].get("title"),
         "score": post["raw_data"].get("score"),
         "num_comments": post["raw_data"].get("num_comments"),
         "created_utc": post["raw_data"].get("timestamp"),
         "sentiment": post["sentiment"].get("label"),
-        "subreddit": post["raw_data"].get("subreddit")
-    } for post in posts])
+        "subreddit": post["raw_data"].get("subreddit"),
+        "top_comments": post.get("top_comments", [])
+    } for post in paginated])
+
+
 
 @app.route("/api/comments", methods=['GET'])
 def get_comments():
@@ -133,7 +165,6 @@ def get_post_details(post_id):
         "comments": comments
     })
 
-
 @app.route("/api/top-posts", methods=['GET'])
 def get_top_posts():
     from_str = request.args.get('from')
@@ -169,7 +200,6 @@ def get_top_posts():
         "sentiment": post["sentiment"].get("label"),
         "subreddit": post["raw_data"].get("subreddit")
     } for post in unique_posts])
-
 
 @app.route("/api/subreddits", methods=['GET'])
 def get_subreddits():
