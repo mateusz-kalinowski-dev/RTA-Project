@@ -4,7 +4,7 @@
   <img width="12" />
   <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apacheairflow/apacheairflow-original.svg" height="35" alt="apache airflow logo"  />
   <img width="12" />
-   <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg" height="35" alt="apache airflow logo"  />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg" height="35" alt="apache airflow logo"  />
   <img width="12" />
   <img src="https://skillicons.dev/icons?i=kafka" height="35" alt="kafka"/>
   <img width="12" />
@@ -16,7 +16,7 @@
   <img width="12" />
   <img src="https://skillicons.dev/icons?i=react" height="35" alt="react logo"/>
   <img width="12" />
-   <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" height="35" alt="vitejs logo"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" height="35" alt="vitejs logo"/>
   <img width="12" />
   <img src="https://skillicons.dev/icons?i=nginx" height="35" alt="nginx logo"/>
   <img width="12" />
