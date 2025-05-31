@@ -1,5 +1,5 @@
 # RTA Project
-<h3 align="left">
+<h3 align="center">
   <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" height="35" alt="python logo"  />
   <img width="12" />
   <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apacheairflow/apacheairflow-original.svg" height="35" alt="apache airflow logo"  />
@@ -63,6 +63,7 @@
 3. **Analysis**: The analyzer service processes data through ML model andsave data in MongoDB.
 4. **API**: The backend exposes REST endpoints for the frontend.
 5. **Visualization**: The frontend displays analytics and dashboards to the user.
+
 
 ## Getting Started
 
