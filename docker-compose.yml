@@ -279,7 +279,7 @@ services:
     ports:
       - "5000:5000"
     depends_on:
-      - analyzer
+      - mongodb
     env_file: .env
     restart: on-failure
     networks:
@@ -295,7 +295,7 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - api
+      - backend
     restart: on-failure
     networks:
       - rta-network
