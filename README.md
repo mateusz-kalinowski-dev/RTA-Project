@@ -64,6 +64,7 @@
 4. **API**: The backend exposes REST endpoints for the frontend.
 5. **Visualization**: The frontend displays analytics and dashboards to the user.
 
+![Image](https://github.com/user-attachments/assets/70f89730-bf11-4899-a3be-5cb9022fb5b7)
 
 ## Getting Started
 
